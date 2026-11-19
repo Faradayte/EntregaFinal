@@ -1,3 +1,91 @@
+<?php
+$con = mysqli_connect("db", "root", "root_password", "Proyectofinal");
+
+if (mysqli_connect_errno()) {
+    echo "Failed to connect to MySQL: " . mysqli_connect_error();
+    exit();
+}
+
+/* Valores recibidos desde los filtros */
+$buscar = "";
+$precio = "";
+$fabricante = "";
+
+if (isset($_GET["buscar"])) {
+    $buscar = mysqli_real_escape_string($con, $_GET["buscar"]);
+}
+
+if (isset($_GET["precio"])) {
+    $precio = $_GET["precio"];
+}
+
+if (isset($_GET["fabricante"])) {
+    $fabricante = mysqli_real_escape_string($con, $_GET["fabricante"]);
+}
+
+/* Lista de fabricantes registrados */
+$sqlFabricantes = "SELECT DISTINCT Fabricante FROM Productos
+                   WHERE Fabricante <> ''
+                   ORDER BY Fabricante";
+$resultadoFabricantes = mysqli_query($con, $sqlFabricantes);
+
+/* Consulta de productos */
+$sql = "SELECT * FROM Productos WHERE 1=1";
+
+if ($precio == "35" || $precio == "50") {
+    $sql = $sql . " AND Precio = " . $precio;
+}
+
+if ($fabricante != "") {
+    $sql = $sql . " AND Fabricante = '" . $fabricante . "'";
+}
+
+if ($buscar != "") {
+    $sql = $sql . " AND (Nombre LIKE '%" . $buscar . "%'
+                    OR Descripcion LIKE '%" . $buscar . "%')";
+}
+
+$resultado = mysqli_query($con, $sql);
+
+if (!$resultado) {
+    echo "Error en la consulta: " . mysqli_error($con);
+    exit();
+}
+
+/* Conserva los filtros actuales al cambiar otra opción */
+$parametros = array();
+
+if ($buscar != "") {
+    $parametros["buscar"] = $buscar;
+}
+if ($precio != "") {
+    $parametros["precio"] = $precio;
+}
+if ($fabricante != "") {
+    $parametros["fabricante"] = $fabricante;
+}
+
+$parametrosComun = $parametros;
+$parametrosComun["precio"] = "35";
+$enlaceComun = "?" . http_build_query($parametrosComun);
+
+$parametrosRaro = $parametros;
+$parametrosRaro["precio"] = "50";
+$enlaceRaro = "?" . http_build_query($parametrosRaro);
+
+$parametrosTodos = array();
+if ($buscar != "") {
+    $parametrosTodos["buscar"] = $buscar;
+}
+if ($fabricante != "") {
+    $parametrosTodos["fabricante"] = $fabricante;
+}
+$enlaceTodos = "product_list.php";
+if (count($parametrosTodos) > 0) {
+    $enlaceTodos = "?" . http_build_query($parametrosTodos);
+}
+?>
+
 <!doctype html>
 <html lang="zxx">
 
@@ -59,7 +147,7 @@
                                 <div class="header-info-right">
                                    <ul>                                          
                                        <li><a href="login.html">My Account </a></li>
-                                       <li><a href="product_list.html">Wish List  </a></li>
+                                       <li><a href="product_list.php">Wish List  </a></li>
                                        <li><a href="cart.html">Shopping</a></li>
                                        <li><a href="cart.html">Cart</a></li>
                                        <li><a href="checkout.html">Checkout</a></li>
@@ -87,7 +175,7 @@
                                             <li><a href="Catagori.html">Catagori</a></li>
                                             <li class="hot"><a href="#">Latest</a>
                                                 <ul class="submenu">
-                                                    <li><a href="product_list.html"> Product list</a></li>
+                                                    <li><a href="product_list.php"> Product list</a></li>
                                                     <li><a href="single-product.html"> Product Details</a></li>
                                                 </ul>
                                             </li>
@@ -172,30 +260,69 @@
                 <div class="col-md-4">
                     <div class="product_sidebar">
                         <div class="single_sedebar">
-                            <form action="#">
-                                <input type="text" name="#" placeholder="Search keyword">
-                                <i class="ti-search"></i>
+                            <form action="product_list.php" method="GET">
+                                <input type="text" name="buscar" placeholder="Search keyword"
+                                       value="<?php echo htmlspecialchars($buscar); ?>">
+                                <?php
+                                if ($precio != "") {
+                                    echo '<input type="hidden" name="precio" value="' . htmlspecialchars($precio) . '">';
+                                }
+                                if ($fabricante != "") {
+                                    echo '<input type="hidden" name="fabricante" value="' . htmlspecialchars($fabricante) . '">';
+                                }
+                                ?>
+                                <button type="submit" style="border:0; background:none;">
+                                    <i class="ti-search"></i>
+                                </button>
                             </form>
                         </div>
                         <div class="single_sedebar">
                             <div class="select_option">
-                                <div class="select_option_list">Category <i class="right fas fa-caret-down"></i> </div>
+                                <div class="select_option_list">Rareza / Precio <i class="right fas fa-caret-down"></i></div>
                                 <div class="select_option_dropdown">
-                                    <p><a href="#">Category 1</a></p>
-                                    <p><a href="#">Category 2</a></p>
-                                    <p><a href="#">Category 3</a></p>
-                                    <p><a href="#">Category 4</a></p>
+                                    <p><a href="<?php echo htmlspecialchars($enlaceTodos); ?>">Todas las rarezas</a></p>
+                                    <p><a href="<?php echo htmlspecialchars($enlaceComun); ?>">Común - $35</a></p>
+                                    <p><a href="<?php echo htmlspecialchars($enlaceRaro); ?>">Raro - $50</a></p>
                                 </div>
                             </div>
                         </div>
                         <div class="single_sedebar">
                             <div class="select_option">
-                                <div class="select_option_list">Type <i class="right fas fa-caret-down"></i> </div>
+                                <div class="select_option_list">Fabricante <i class="right fas fa-caret-down"></i></div>
                                 <div class="select_option_dropdown">
-                                    <p><a href="#">Type 1</a></p>
-                                    <p><a href="#">Type 2</a></p>
-                                    <p><a href="#">Type 3</a></p>
-                                    <p><a href="#">Type 4</a></p>
+                                    <p>
+                                        <a href="<?php
+                                            $parametrosFabricante = array();
+                                            if ($buscar != "") {
+                                                $parametrosFabricante["buscar"] = $buscar;
+                                            }
+                                            if ($precio != "") {
+                                                $parametrosFabricante["precio"] = $precio;
+                                            }
+                                            echo "?" . http_build_query($parametrosFabricante);
+                                        ?>">Todos los fabricantes</a>
+                                    </p>
+                                    <?php
+                                    if ($resultadoFabricantes) {
+                                        while ($filaFabricante = mysqli_fetch_array($resultadoFabricantes)) {
+                                            $parametrosFabricante = array();
+                                            $parametrosFabricante["fabricante"] = $filaFabricante["Fabricante"];
+                                            if ($buscar != "") {
+                                                $parametrosFabricante["buscar"] = $buscar;
+                                            }
+                                            if ($precio != "") {
+                                                $parametrosFabricante["precio"] = $precio;
+                                            }
+                                    ?>
+                                        <p>
+                                            <a href="?<?php echo htmlspecialchars(http_build_query($parametrosFabricante)); ?>">
+                                                <?php echo htmlspecialchars($filaFabricante["Fabricante"]); ?>
+                                            </a>
+                                        </p>
+                                    <?php
+                                        }
+                                    }
+                                    ?>
                                 </div>
                             </div>
                         </div>
@@ -203,81 +330,62 @@
                 </div>
                 <div class="col-md-8">
                     <div class="product_list">
+                        <p>
+                            Productos encontrados: <?php echo mysqli_num_rows($resultado); ?>
+                            &nbsp; | &nbsp;
+                            <a href="<?php echo htmlspecialchars($enlaceTodos); ?>">Quitar filtros</a>
+                        </p>
                         <div class="row">
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product6.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Cervical pillow for airplane
-                                    car office nap pillow</a> </h3>
-                                    <p>From $5</p>
+                            <?php
+                            if (mysqli_num_rows($resultado) > 0) {
+                                while ($fila = mysqli_fetch_array($resultado)) {
+                                    $tipoImagen = "image/jpeg";
+                                    $datosImagen = $fila["Fotos"];
+
+                                    if (!empty($datosImagen)) {
+                                        $informacionImagen = getimagesizefromstring($datosImagen);
+                                        if ($informacionImagen != false) {
+                                            $tipoImagen = image_type_to_mime_type($informacionImagen[2]);
+                                        }
+                                    }
+                            ?>
+
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="single_product_item">
+                                        <?php
+                                        if (!empty($datosImagen)) {
+                                        ?>
+                                            <img src="data:<?php echo $tipoImagen; ?>;base64,<?php echo base64_encode($datosImagen); ?>"
+                                                 alt="<?php echo htmlspecialchars($fila["Nombre"]); ?>"
+                                                 class="img-fluid">
+                                        <?php
+                                        }
+                                        ?>
+
+                                        <h3>
+                                            <a href="#">
+                                                <?php echo htmlspecialchars($fila["Nombre"]); ?>
+                                            </a>
+                                        </h3>
+
+                                        <p><?php echo htmlspecialchars($fila["Descripcion"]); ?></p>
+                                        <p>$<?php echo htmlspecialchars($fila["Precio"]); ?></p>
+                                        <p>Disponibles: <?php echo htmlspecialchars($fila["CantAlmacen"]); ?></p>
+                                        <p>Fabricante: <?php echo htmlspecialchars($fila["Fabricante"]); ?></p>
+                                        <p>Origen: <?php echo htmlspecialchars($fila["Origen"]); ?></p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product2.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Geometric striped flower home classy decor</a> </h3>
-                                    <p>From $5</p>
+
+                            <?php
+                                }
+                            } else {
+                            ?>
+                                <div class="col-12">
+                                    <p>No se encontraron productos con esos filtros.</p>
                                 </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product5.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Foam filling cotton slow rebound pillows</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product6.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Memory foam filling cotton Slow rebound pillows</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product1.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Memory foam filling cotton Slow rebound pillows</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product4.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Sleeping orthopedic sciatica Back Hip Joint Pain relief</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product5.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Memory foam filling cotton Slow rebound pillows</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product3.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Sleeping orthopedic sciatica Back Hip Joint Pain relief</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product2.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Geometric striped flower home classy decor</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-sm-6">
-                                <div class="single_product_item">
-                                    <img src="assets/img/categori/product1.png" alt="" class="img-fluid">
-                                    <h3> <a href="single-product.html">Geometric striped flower home classy decor</a> </h3>
-                                    <p>From $5</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="load_more_btn text-center">
-                            <a href="#" class="btn_3">Load More</a>
+                            <?php
+                            }
+                            ?>
                         </div>
                     </div>
                 </div>
