@@ -1,10 +1,48 @@
+<?php
+session_start();
+require_once 'conexion.php';
+
+if (isset($_SESSION['idUsuario'])) {
+    header("Location: index.php");
+    exit();
+}
+
+$mensaje = "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $correo = trim($_POST['correo'] ?? '');
+    $contrasenia = $_POST['contrasenia'] ?? '';
+
+    $consulta = "SELECT id, Nombre, Correo, Contrasenia FROM Usuarios WHERE Correo = ?";
+    $stmt = mysqli_prepare($con, $consulta);
+
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "s", $correo);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $id, $nombre, $email, $passwordHash);
+
+        if (mysqli_stmt_fetch($stmt) && password_verify($contrasenia, $passwordHash)) {
+            session_regenerate_id(true);
+            $_SESSION['idUsuario'] = $id;
+            $_SESSION['nombreUsuario'] = $nombre;
+            $_SESSION['correoUsuario'] = $email;
+            mysqli_stmt_close($stmt);
+            header("Location: index.php");
+            exit();
+        }
+        mysqli_stmt_close($stmt);
+    }
+
+    $mensaje = "Incorrect email address or password.";
+}
+?>
 <!doctype html>
-<html lang="zxx">
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>eCommerce HTML-5 Template </title>
+    <title>Log In | eStore</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="manifest" href="site.webmanifest">
@@ -56,8 +94,8 @@
                                 </div>
                                 <div class="header-info-right">
                                    <ul>                                          
-                                       <li><a href="login.html">My Account </a></li>
-                                       <li><a href="product_list.html">Wish List  </a></li>
+                                       <li><a href="login.php">My Account</a></li>
+                                       <li><a href="product_list.php">Wish List  </a></li>
                                        <li><a href="cart.html">Shopping</a></li>
                                        <li><a href="cart.html">Cart</a></li>
                                        <li><a href="checkout.html">Checkout</a></li>
@@ -73,7 +111,7 @@
                             <!-- Logo -->
                             <div class="col-xl-1 col-lg-1 col-md-1 col-sm-3">
                                 <div class="logo">
-                                  <a href="index.html"><img src="assets/img/logo/logo.png" alt=""></a>
+                                  <a href="index.php"><img src="assets/img/logo/logo.png" alt=""></a>
                                 </div>
                             </div>
                             <div class="col-xl-6 col-lg-8 col-md-7 col-sm-5">
@@ -81,12 +119,12 @@
                                 <div class="main-menu f-right d-none d-lg-block">
                                     <nav>                                                
                                         <ul id="navigation">                                                                                                                                     
-                                            <li><a href="index.html">Home</a></li>
-                                            <li><a href="Catagori.html">Catagori</a></li>
+                                            <li><a href="index.php">Home</a></li>
+                                            <li><a href="Catagori.php">Catagori</a></li>
                                             <li class="hot"><a href="#">Latest</a>
                                                 <ul class="submenu">
-                                                    <li><a href="product_list.html"> Product list</a></li>
-                                                    <li><a href="single-product.html"> Product Details</a></li>
+                                                    <li><a href="product_list.php"> Product list</a></li>
+                                                    <li><a href="single-product.php"> Product Details</a></li>
                                                 </ul>
                                             </li>
                                             <li><a href="blog.html">Blog</a>
@@ -97,7 +135,7 @@
                                             </li>
                                             <li><a href="#">Pages</a>
                                                 <ul class="submenu">
-                                                    <li><a href="login.html">Login</a></li>
+                                                    <li><a href="login.php">Log In</a></li>
                                                     <li><a href="cart.html">Card</a></li>
                                                     <li><a href="elements.html">Element</a></li>
                                                     <li><a href="about.html">About</a></li>
@@ -131,7 +169,12 @@
                                             <a href="cart.html"><i class="fas fa-shopping-cart"></i></a>
                                         </div>
                                     </li>
-                                   <li class="d-none d-lg-block"> <a href="#" class="btn header-btn">Sign in</a></li>
+                                   <li class="d-none d-lg-block"> <?php if (isset($_SESSION['idUsuario'])) { ?>
+                                        <a href="#" class="btn header-btn"><?php echo htmlspecialchars($_SESSION['nombreUsuario']); ?></a>
+                                        <a href="cerrar_sesion.php" class="btn header-btn">Log Out</a>
+                                   <?php } else { ?>
+                                        <a href="login.php" class="btn header-btn">Log In</a>
+                                   <?php } ?></li>
                                 </ul>
                             </div>
                             <!-- Mobile Menu -->
@@ -154,7 +197,7 @@
                 <div class="row">
                     <div class="col-xl-12">
                         <div class="hero-cap text-center">
-                            <h2>Login</h2>
+                            <h2>Log In</h2>
                         </div>
                     </div>
                 </div>
@@ -171,35 +214,30 @@
                     <div class="login_part_text text-center">
                         <div class="login_part_text_iner">
                             <h2>New to our Shop?</h2>
-                            <p>There are advances being made in science and technology
-                                everyday, and a good example of this is the</p>
-                            <a href="#" class="btn_3">Create an Account</a>
+                            <p>Create an account to start shopping and keep track of your purchases.</p>
+                            <a href="registro.php" class="btn_3">Create an Account</a>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6 col-md-6">
                     <div class="login_part_form">
                         <div class="login_part_form_iner">
-                            <h3>Welcome Back ! <br>
-                                Please Sign in now</h3>
-                            <form class="row contact_form" action="#" method="post" novalidate="novalidate">
+                            <h3>Welcome Back!<br>
+                                Please Log In</h3>
+                            <?php if ($mensaje !== "") { ?>
+                                <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($mensaje); ?></div>
+                            <?php } ?>
+                            <form class="row contact_form" action="login.php" method="post">
                                 <div class="col-md-12 form-group p_star">
-                                    <input type="text" class="form-control" id="name" name="name" value=""
-                                        placeholder="Username">
+                                    <input type="email" class="form-control" id="correo" name="correo"
+                                        placeholder="Email Address" required>
                                 </div>
                                 <div class="col-md-12 form-group p_star">
-                                    <input type="password" class="form-control" id="password" name="password" value=""
-                                        placeholder="Password">
+                                    <input type="password" class="form-control" id="contrasenia" name="contrasenia"
+                                        placeholder="Password" required>
                                 </div>
                                 <div class="col-md-12 form-group">
-                                    <div class="creat_account d-flex align-items-center">
-                                        <input type="checkbox" id="f-option" name="selector">
-                                        <label for="f-option">Remember me</label>
-                                    </div>
-                                    <button type="submit" value="submit" class="btn_3">
-                                        log in
-                                    </button>
-                                    <a class="lost_pass" href="#">forget password?</a>
+                                    <button type="submit" class="btn_3">Log In</button>
                                 </div>
                             </form>
                         </div>
@@ -220,7 +258,7 @@
                          <div class="single-footer-caption mb-30">
                               <!-- logo -->
                              <div class="footer-logo">
-                                 <a href="index.html"><img src="assets/img/logo/logo2_footer.png" alt=""></a>
+                                 <a href="index.php"><img src="assets/img/logo/logo2_footer.png" alt=""></a>
                              </div>
                              <div class="footer-tittle">
                                  <div class="footer-pera">

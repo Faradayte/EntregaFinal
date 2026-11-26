@@ -1,7 +1,9 @@
 <?php
-    $con = mysqli_connect("db", "root", "root_password", "Proyectofinal");
+$con = mysqli_connect("db", "root", "root_password", "Proyectofinal");
 
-    if (mysqli_connect_errno()) {
-        echo "Failed to connect to MySQL: " . mysqli_connect_error();
-    }
+if (!$con) {
+    die("Database connection error: " . mysqli_connect_error());
+}
+
+mysqli_set_charset($con, "utf8mb4");
 ?>
